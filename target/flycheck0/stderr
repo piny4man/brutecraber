@@ -1,0 +1,7 @@
+error: failed to select a version for the requirement `clap_derive = "=4.6.0"`
+candidate versions found which didn't match: 4.5.49, 4.5.47, 4.5.45, ...
+location searched: crates.io index
+required by package `clap v4.6.0`
+    ... which satisfies dependency `clap = "^4.5.49"` (locked to 4.6.0) of package `brutecraber v0.1.0 (/Users/erikgavilan/Documents/brutecraber)`
+if you are looking for the prerelease package it needs to be specified explicitly
+    clap_derive = { version = "4.0.0-rc.1" }
