@@ -64,11 +64,12 @@ The binary will be at `./target/release/brutecraber`.
 
 One hash per line:
 
-```
-900150983cd24fb0d6963f7d28e17f72
-e99a18c428cb38d5f260853678922e03
-827ccb0eea8a706c4c34a16891f84e7b
-```
+| Type | Description |
+|------|-------------|
+| `md5` | Standard MD5 hashes in hexadecimal |
+| `md5-base64` | MD5 hashes encoded in Base64 |
+| `sha1` | Standard SHA1 hashes in hexadecimal |
+| `sha1-base64` | SHA1 hashes encoded in Base64 |
 
 ## ⚠️ Disclaimer
 

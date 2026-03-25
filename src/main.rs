@@ -2,6 +2,7 @@ use anyhow;
 use clap::Parser;
 use colored::Colorize;
 use md5::compute;
+use sha1::{Digest, Sha1};
 use std::fs;
 
 #[derive(Parser)] // sabe leer argumentos (derive(parser))
@@ -17,17 +18,44 @@ struct Args {
 }
 
 fn banner() {
-    println!("{}", r" ___.                 __                            ___.".truecolor(222, 74, 31));
-    println!("{}", r" \_ |_________ __ ___/  |_  ____   ________________ \_ |__   ___________".truecolor(222, 74, 31));
-    println!("{}", r"  | __ \_  __ \  |  \   __\/ __ \_/ ___\_  __ \__  \ | __ \_/ __ \_  __ \".truecolor(222, 74, 31));
-    println!("{}", r"  | \_\ \  | \/  |  /|  | \  ___/\  \___|  | \// __ \| \_\ \  ___/|  | \/".truecolor(222, 74, 31));
-    println!("{}", r"  |___  /__|  |____/ |__|  \___  >\___  >__|  (____  /___  /\___  >__|".truecolor(222, 74, 31));
-    println!("{}", r"      \/                       \/     \/           \/    \/     \/".truecolor(222, 74, 31));
+    println!(
+        "{}",
+        r" ___.                 __                            ___.".truecolor(222, 74, 31)
+    );
+    println!(
+        "{}",
+        r" \_ |_________ __ ___/  |_  ____   ________________ \_ |__   ___________"
+            .truecolor(222, 74, 31)
+    );
+    println!(
+        "{}",
+        r"  | __ \_  __ \  |  \   __\/ __ \_/ ___\_  __ \__  \ | __ \_/ __ \_  __ \"
+            .truecolor(222, 74, 31)
+    );
+    println!(
+        "{}",
+        r"  | \_\ \  | \/  |  /|  | \  ___/\  \___|  | \// __ \| \_\ \  ___/|  | \/"
+            .truecolor(222, 74, 31)
+    );
+    println!(
+        "{}",
+        r"  |___  /__|  |____/ |__|  \___  >\___  >__|  (____  /___  /\___  >__|"
+            .truecolor(222, 74, 31)
+    );
+    println!(
+        "{}",
+        r"      \/                       \/     \/           \/    \/     \/"
+            .truecolor(222, 74, 31)
+    );
     println!("                                                Author: erikgavs");
-    println!("                                                v0.1.0");
+    println!("                                                v0.3.0");
     println!();
-    println!(" [!] DISCLAIMER: This software is provided for ethical hacking and penetration testing");
-    println!("     only. You are solely responsible for your actions. Using this tool against targets");
+    println!(
+        " [!] DISCLAIMER: This software is provided for ethical hacking and penetration testing"
+    );
+    println!(
+        "     only. You are solely responsible for your actions. Using this tool against targets"
+    );
     println!("     without prior consent is a violation of applicable laws. Use at your own risk.");
     println!();
 }
@@ -49,8 +77,11 @@ fn main() -> anyhow::Result<()> {
 
     let wordlist = fs::read_to_string(&args.wordlist)?;
 
-    println!("\nSelected file: {}", args.file.green());
-    println!("Selected wordlist {}", args.wordlist.green());
+    println!();
+    println!("Selected file: {}", args.file.green());
+    println!("Selected wordlist: {}", args.wordlist.green());
+    println!("Selected hash: {}", args.hash.green());
+    println!();
 
     // for each word in wordlist, convert it to md5 hash
     // if the hash matches one in hashes.txt, that word is the original text
@@ -58,12 +89,7 @@ fn main() -> anyhow::Result<()> {
         if args.hash == "md5" {
             let hash = format!("{:x}", md5::compute(word));
             if hashes.contains(&hash.as_str()) {
-                println!(
-                    "\n{} hash cracked {} -> {}\n",
-                    good_star.green(),
-                    hash,
-                    word
-                );
+                println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
 
                 found += 1;
             }
@@ -75,7 +101,40 @@ fn main() -> anyhow::Result<()> {
 
                     if hex == hash {
                         println!(
-                            "\n{} hash decoded and cracked {} -> {} -> {}\n",
+                            "{} hash decoded and cracked {} -> {} -> {}",
+                            good_star.green(),
+                            h,
+                            hex,
+                            word
+                        );
+
+                        found += 1;
+                    }
+                }
+            }
+        } else if args.hash == "sha1" {
+            // hasher instance
+            let mut hash_engine = Sha1::new();
+            hash_engine.update(word);
+            let hash = format!("{:x}", hash_engine.finalize());
+
+            // file with hashes, provided by the user
+            if hashes.contains(&hash.as_str()) {
+                println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
+
+                found += 1;
+            }
+        } else if args.hash == "sha1-base64" {
+            let mut hash_engine = Sha1::new();
+            hash_engine.update(word);
+            let hash = format!("{:x}", hash_engine.finalize());
+            for h in &hashes {
+                if let Ok(decoded) = base64::decode(h) {
+                    let hex: String = decoded.iter().map(|m| format!("{:02x}", m)).collect();
+
+                    if hex == hash {
+                        println!(
+                            "{} Hash decoded and cracked {} -> {} -> {}",
                             good_star.green(),
                             h,
                             hex,
@@ -89,13 +148,14 @@ fn main() -> anyhow::Result<()> {
         }
     }
 
+    println!();
     if found == 0 {
-        println!("\n{} failed cracking hashes or bad file\n", bad_star.red())
+        println!("{} failed cracking hashes or bad file", bad_star.red());
     }
 
     if found > 0 {
         println!(
-            "{} cracked {}/{} hashes\n",
+            "{} cracked {}/{} hashes",
             good_star.green(),
             found,
             hashes.len()
