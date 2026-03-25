@@ -86,64 +86,64 @@ fn main() -> anyhow::Result<()> {
     // for each word in wordlist, convert it to md5 hash
     // if the hash matches one in hashes.txt, that word is the original text
     for word in wordlist.lines() {
-        if args.hash == "md5" {
-            let hash = format!("{:x}", md5::compute(word));
-            if hashes.contains(&hash.as_str()) {
-                println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
-
-                found += 1;
+        match args.hash.as_str() {
+            "md5" => {
+                let hash = format!("{:x}", md5::compute(word));
+                if hashes.contains(&hash.as_str()) {
+                    println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
+                    found += 1;
+                }
             }
-        } else if args.hash == "md5-base64" {
-            let hash = format!("{:x}", md5::compute(word));
-            for h in &hashes {
-                if let Ok(decoded) = base64::decode(h) {
-                    let hex: String = decoded.iter().map(|n| format!("{:02x}", n)).collect();
-
-                    if hex == hash {
-                        println!(
-                            "{} hash decoded and cracked {} -> {} -> {}",
-                            good_star.green(),
-                            h,
-                            hex,
-                            word
-                        );
-
-                        found += 1;
+            "md5-base64" => {
+                let hash = format!("{:x}", md5::compute(word));
+                for h in &hashes {
+                    if let Ok(decoded) = base64::decode(h) {
+                        let hex: String = decoded.iter().map(|n| format!("{:02x}", n)).collect();
+                        if hex == hash {
+                            println!(
+                                "{} hash decoded and cracked {} -> {} -> {}",
+                                good_star.green(),
+                                h,
+                                hex,
+                                word
+                            );
+                            found += 1;
+                        }
                     }
                 }
             }
-        } else if args.hash == "sha1" {
-            // hasher instance
-            let mut hash_engine = Sha1::new();
-            hash_engine.update(word);
-            let hash = format!("{:x}", hash_engine.finalize());
-
-            // file with hashes, provided by the user
-            if hashes.contains(&hash.as_str()) {
-                println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
-
-                found += 1;
+            "sha1" => {
+                let mut hash_engine = Sha1::new();
+                hash_engine.update(word);
+                let hash = format!("{:x}", hash_engine.finalize());
+                if hashes.contains(&hash.as_str()) {
+                    println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
+                    found += 1;
+                }
             }
-        } else if args.hash == "sha1-base64" {
-            let mut hash_engine = Sha1::new();
-            hash_engine.update(word);
-            let hash = format!("{:x}", hash_engine.finalize());
-            for h in &hashes {
-                if let Ok(decoded) = base64::decode(h) {
-                    let hex: String = decoded.iter().map(|m| format!("{:02x}", m)).collect();
-
-                    if hex == hash {
-                        println!(
-                            "{} Hash decoded and cracked {} -> {} -> {}",
-                            good_star.green(),
-                            h,
-                            hex,
-                            word
-                        );
-
-                        found += 1;
+            "sha1-base64" => {
+                let mut hash_engine = Sha1::new();
+                hash_engine.update(word);
+                let hash = format!("{:x}", hash_engine.finalize());
+                for h in &hashes {
+                    if let Ok(decoded) = base64::decode(h) {
+                        let hex: String = decoded.iter().map(|m| format!("{:02x}", m)).collect();
+                        if hex == hash {
+                            println!(
+                                "{} hash decoded and cracked {} -> {} -> {}",
+                                good_star.green(),
+                                h,
+                                hex,
+                                word
+                            );
+                            found += 1;
+                        }
                     }
                 }
+            }
+            _ => {
+                println!("\n{} unsupported type of hash", bad_star.red());
+                break;
             }
         }
     }
