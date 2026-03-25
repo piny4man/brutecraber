@@ -152,6 +152,26 @@ fn main() -> anyhow::Result<()> {
                     found += 1;
                 }
             }
+            "sha256-base64" => {
+                let mut hash_engine = Sha256::new();
+                hash_engine.update(word);
+                let hash = format!("{:x}", hash_engine.finalize());
+                for h in &hashes {
+                    if let Ok(decoded) = base64::decode(h) {
+                        let hex: String = decoded.iter().map(|m| format!("{:02x}", m)).collect();
+                        if hex == hash {
+                            println!(
+                                "{} hash decoded and cracked {} -> {} -> {}",
+                                good_star.green(),
+                                h,
+                                hex,
+                                word
+                            );
+                            found += 1;
+                        }
+                    }
+                }
+            }
             _ => {
                 println!("\n{} unsupported type of hash", bad_star.red());
                 break;
