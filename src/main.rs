@@ -79,6 +79,7 @@ fn main() -> anyhow::Result<()> {
 
     println!("\nSelected file: {}", args.file.green());
     println!("Selected wordlist {}", args.wordlist.green());
+    println!("Selected hash {}", args.hash.green());
 
     // for each word in wordlist, convert it to md5 hash
     // if the hash matches one in hashes.txt, that word is the original text
