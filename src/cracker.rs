@@ -91,6 +91,24 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str) -> usize {
                     found += 1;
                 }
             }
+            "sha512-base64" => {
+                let hash = hashes::sha512::crack(word);
+                for h in hashes {
+                    if let Ok(decoded) = general_purpose::STANDARD.decode(h) {
+                        let hex: String = decoded.iter().map(|m| format!("{:02x}", m)).collect();
+                        if hex == hash {
+                            println!(
+                                "{} hash decoded and cracked {} -> {} -> {}",
+                                good_star.green(),
+                                h,
+                                hex,
+                                word
+                            );
+                            found += 1;
+                        }
+                    }
+                }
+            }
             _ => {
                 println!("\n{} unsupported type of hash", bad_star.red());
                 break;
