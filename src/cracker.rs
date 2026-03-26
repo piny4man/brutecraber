@@ -84,6 +84,13 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str) -> usize {
                     }
                 }
             }
+            "sha512" => {
+                let hash = hashes::sha512::crack(word);
+                if hashes.contains(&hash.as_str()) {
+                    println!("{} hash cracked {} -> {}", good_star.green(), hash, word);
+                    found += 1;
+                }
+            }
             _ => {
                 println!("\n{} unsupported type of hash", bad_star.red());
                 break;
