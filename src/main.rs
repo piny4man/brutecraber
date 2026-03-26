@@ -14,7 +14,7 @@ struct Args {
     #[arg(short = 'w')]
     wordlist: String,
 
-    #[arg(short = 't')]
+    #[arg(short = 't', default_value = "auto")]
     hash: String,
 }
 
