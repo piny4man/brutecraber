@@ -23,6 +23,13 @@ struct Args {
         help = "Hash type: md5, md5-base64, md5-salt, sha1, sha1-base64, sha1-salt, sha256, sha256-base64, sha256-salt, sha512, sha512-base64, sha512-salt"
     )]
     hash: String,
+    #[arg(
+        short = 'r',
+        long = "rules",
+        default_value_t = false,
+        help = "Enable rule-based transformations"
+    )]
+    rules: bool,
 }
 
 fn banner() {
@@ -116,7 +123,7 @@ fn main() -> anyhow::Result<()> {
         println!("Selected hash: {}\n", auto_detect.green());
     }
 
-    let found = cracker::run(&hashes, &wordlist, &auto_detect);
+    let found = cracker::run(&hashes, &wordlist, &auto_detect, args.rules);
 
     println!();
     if found == 0 {
