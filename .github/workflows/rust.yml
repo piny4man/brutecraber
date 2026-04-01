@@ -1,24 +1,31 @@
-name: Rust Manual Release (Auto Notes)
+name: Rust Manual Release (Auto Version + Notes)
 
 on:
   workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
 
 jobs:
   release:
     runs-on: ubuntu-latest
 
     steps:
-      # 📥 Checkout
-      - uses: actions/checkout@v4
+      # 📥 Checkout repository
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-      # 🦀 Setup Rust
-      - uses: dtolnay/rust-toolchain@stable
+      # 🦀 Install Rust toolchain
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
 
-      # 🔍 Extract metadata (robust)
+      # 🔍 Extract metadata from Cargo.toml
       - name: Extract Cargo metadata
         id: meta
         run: |
           METADATA=$(cargo metadata --no-deps --format-version 1)
+
           NAME=$(echo $METADATA | jq -r '.packages[0].name')
           VERSION=$(echo $METADATA | jq -r '.packages[0].version')
 
@@ -31,21 +38,28 @@ jobs:
           echo "arch=$ARCH" >> $GITHUB_OUTPUT
           echo "os=$OS" >> $GITHUB_OUTPUT
 
-      # 🏗️ Build
+      # 🏗️ Build release binary
       - name: Build release
         run: cargo build --release --locked
 
-      # 📦 Package binary
-      - name: Package
+      # 📦 Package binary into tar.gz
+      - name: Package binary
         run: |
           mkdir -p dist
           cp target/release/${{ steps.meta.outputs.name }} dist/
+
           cd dist
           tar -czvf ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.os }}-${{ steps.meta.outputs.arch }}.tar.gz ${{ steps.meta.outputs.name }}
 
-      # 🧾 Generate Release Notes
-      - name: Generate Release Notes
-        id: notes
+      # 📤 Upload artifact (for CI visibility)
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.os }}-${{ steps.meta.outputs.arch }}
+          path: dist/*.tar.gz
+
+      # 🧾 Generate structured release notes
+      - name: Generate release notes
         run: |
           cat <<EOF > release.md
 ## ${{ steps.meta.outputs.name }} v${{ steps.meta.outputs.version }} 🚀
@@ -53,14 +67,14 @@ jobs:
 ### 🖥️ Build Info
 - OS: ${{ steps.meta.outputs.os }}
 - Architecture: ${{ steps.meta.outputs.arch }}
-- Rust: stable
+- Rust Toolchain: stable
 
 ---
 
-### ✨ What's New
-- Automated release generated from Cargo.toml
-- Optimized release build
-- Linux binary packaging
+### ✨ What's Included
+- Automated release via GitHub Actions
+- Built using \`cargo build --release\`
+- Optimized binary for performance
 
 ---
 
@@ -72,14 +86,14 @@ ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.os }}-${{ steps.meta.outpu
 ---
 
 ### 🔐 Notes
-- Built using \`cargo build --release\`
-- Compatible with modern Linux distributions
-- No manual steps required
+- No manual release steps required
+- Version sourced directly from Cargo.toml
+- Reproducible build with \`--locked\`
 
 EOF
 
-      # 🚀 Create Release
-      - name: Create Release
+      # 🚀 Create GitHub Release and upload binary
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: ${{ steps.meta.outputs.tag }}
