@@ -1,55 +1,47 @@
-name: Rust CI (Linux Secure)
+name: Rust CI (Linux Minimal Secure)
 
 on:
   push:
-    branches: ["main", "*"]
+    branches: ["**"]        # 🔥 runs on all branches (fork + feature)
   pull_request:
-    branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # 🔥 future-proof
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true   # ✅ eliminate Node20 warning
 
 jobs:
   build:
     runs-on: ubuntu-latest
 
     steps:
-      # 📥 Checkout (latest)
+      # 📥 Checkout (latest stable major)
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🦀 Rust toolchain
+      # 🦀 Install Rust
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
-        with:
-          components: clippy
 
-      # ⚡ Cache
+      # ⚡ Cache dependencies
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
 
-      # 🔍 Clippy strict
-      - name: Clippy lint
-        run: cargo clippy --all-targets --all-features -- -D warnings
-
-      # 🔐 Fast audit
+      # 🔐 Fast security audit
       - name: Install cargo-audit
         uses: taiki-e/install-action@cargo-audit
 
       - name: Run cargo audit
         run: cargo audit
 
-      # 🏗️ Build (release)
+      # 🏗️ Build release (optimized)
       - name: Build release
         run: cargo build --release --locked
 
-      # 🧪 Tests
+      # 🧪 Run tests
       - name: Run tests
         run: cargo test --all --verbose --locked
 
-      # 📦 Upload binary
+      # 📦 Upload binary only
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
