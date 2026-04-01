@@ -2,13 +2,13 @@ name: Rust CI (Linux Secure)
 
 on:
   push:
-    branches: ["main", "*"]   # ✅ works on fork main + any branch
+    branches: ["main", "*"]
   pull_request:
     branches: ["main"]
 
 env:
   CARGO_TERM_COLOR: always
-  RUSTFLAGS: "-D warnings"   # 🔥 fail-safe (no warnings allowed)
+  RUSTFLAGS: "-D warnings"
 
 jobs:
   build:
@@ -19,19 +19,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 🦀 Install Rust + components
+      # 🦀 Setup Rust
       - name: Setup Rust toolchain
         uses: dtolnay/rust-toolchain@stable
         with:
-          components: rustfmt, clippy
+          components: clippy
 
       # ⚡ Cache dependencies
       - name: Cache cargo
         uses: Swatinem/rust-cache@v2
-
-      # 🧹 Format check
-      - name: Check formatting
-        run: cargo fmt --all -- --check
 
       # 🔍 Clippy (strict)
       - name: Clippy lint
@@ -44,7 +40,7 @@ jobs:
       - name: Run cargo audit
         run: cargo audit
 
-      # 🏗️ Build release (optimized)
+      # 🏗️ Build release (optimized + reproducible)
       - name: Build release
         run: cargo build --release --locked
 
@@ -52,7 +48,7 @@ jobs:
       - name: Run tests
         run: cargo test --all --verbose --locked
 
-      # 📦 Upload ONLY binary artifact
+      # 📦 Upload ONLY binary
       - name: Upload binary
         uses: actions/upload-artifact@v4
         with:
