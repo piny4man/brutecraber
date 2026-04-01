@@ -159,6 +159,37 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                         }
                     }
                 }
+                "sha3-256" => {
+                    let hash = hashes::sha3_256::crack(w);
+                    if hashes.contains(&hash.as_str()) {
+                        bar.println(format!(
+                            "{} hash cracked {} -> {}",
+                            good_star.green(),
+                            hash,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+                "sha3-256-base64" => {
+                    let hash = hashes::sha3_256::crack(w);
+                    for h in hashes {
+                        if let Ok(decoded) = general_purpose::STANDARD.decode(h) {
+                            let hex: String =
+                                decoded.iter().map(|m| format!("{:02x}", m)).collect();
+                            if hex == hash {
+                                bar.println(format!(
+                                    "{} hash decoded and cracked {} -> {} -> {}",
+                                    good_star.green(),
+                                    h,
+                                    hex,
+                                    w
+                                ));
+                                found.fetch_add(1, Ordering::Relaxed);
+                            }
+                        }
+                    }
+                }
                 "md5-salt" => {
                     for h in hashes {
                         if let Some((salt, target)) = h.split_once(':') {
@@ -214,6 +245,23 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                     for h in hashes {
                         if let Some((salt, target)) = h.split_once(':') {
                             let hash = hashes::sha512::crack_with_salt(w, salt);
+                            if hash == target {
+                                bar.println(format!(
+                                    "{} hash cracked [salt:{}] {} -> {}",
+                                    good_star.green(),
+                                    salt,
+                                    target,
+                                    w
+                                ));
+                                found.fetch_add(1, Ordering::Relaxed);
+                            }
+                        }
+                    }
+                }
+                "sha3-256-salt" => {
+                    for h in hashes {
+                        if let Some((salt, target)) = h.split_once(':') {
+                            let hash = hashes::sha3_256::crack_with_salt(w, salt);
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
