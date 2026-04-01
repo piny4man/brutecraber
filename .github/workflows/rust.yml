@@ -1,0 +1,79 @@
+name: Rust Manual Release (Stable)
+
+on:
+  workflow_dispatch:
+
+env:
+  CARGO_TERM_COLOR: always
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      # 📥 Checkout
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 🦀 Setup Rust
+      - name: Setup Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      # 🔍 Extract metadata
+      - name: Extract Cargo metadata
+        id: meta
+        run: |
+          METADATA=$(cargo metadata --no-deps --format-version 1)
+
+          NAME=$(echo "$METADATA" | jq -r '.packages[0].name')
+          VERSION=$(echo "$METADATA" | jq -r '.packages[0].version')
+
+          ARCH=$(uname -m)
+          OS=linux
+
+          echo "name=$NAME" >> $GITHUB_OUTPUT
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "tag=v$VERSION" >> $GITHUB_OUTPUT
+          echo "arch=$ARCH" >> $GITHUB_OUTPUT
+          echo "os=$OS" >> $GITHUB_OUTPUT
+
+      # 🏗️ Build
+      - name: Build release
+        run: cargo build --release --locked
+
+      # 📦 Package binary
+      - name: Package binary
+        run: |
+          mkdir -p dist
+          cp target/release/${{ steps.meta.outputs.name }} dist/
+
+          cd dist
+          tar -czvf ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.os }}-${{ steps.meta.outputs.arch }}.tar.gz ${{ steps.meta.outputs.name }}
+
+      # 📤 Upload artifact
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.meta.outputs.name }}-${{ steps.meta.outputs.os }}-${{ steps.meta.outputs.arch }}
+          path: dist/*.tar.gz
+
+      # 🧾 Generate release notes (CUSTOM STRUCTURE)
+      - name: Generate release notes
+        run: |
+          echo "## BruteCraber v${{ steps.meta.outputs.version }} Latest" > release.md
+          echo "" >> release.md
+          echo "### What's New in v${{ steps.meta.outputs.version }}" >> release.md
+          echo "" >> release.md
+          echo "_(Maintainers can update this section manually with detailed changes.)_" >> release.md
+
+     # 🚀 Create Release
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.name }} v${{ steps.meta.outputs.version }}
+          body_path: release.md
+          files: dist/*.tar.gz
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
