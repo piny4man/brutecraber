@@ -8,7 +8,7 @@ use colored::Colorize;
 use std::fs;
 
 #[derive(Parser)] // sabe leer argumentos (derive(parser))
-#[command(name = "brutecraber", version = "0.6.0")]
+#[command(name = "brutecraber", version = "0.7.0")]
 struct Args {
     #[arg(short = 'f', help = "Path to file containing hashes")]
     file: String,
@@ -62,7 +62,7 @@ fn banner() {
             .truecolor(222, 74, 31)
     );
     println!("                                                Author: erikgavs");
-    println!("                                                v0.6.0");
+    println!("                                                v0.7.0");
     println!();
     println!(
         " [!] DISCLAIMER: This software is provided for ethical hacking and penetration testing"
