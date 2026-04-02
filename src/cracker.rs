@@ -190,6 +190,29 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                         }
                     }
                 }
+                "sha256-auto" => {
+                    let hash = hashes::sha256::crack(w);
+                    if hashes.contains(&hash.as_str()) {
+                        bar.println(format!(
+                            "{} hash cracked {} -> {}",
+                            good_star.green(),
+                            hash,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    } else {
+                        let hash = hashes::sha3_256::crack(w);
+                        if hashes.contains(&hash.as_str()) {
+                            bar.println(format!(
+                                "{} hash cracked {} -> {}",
+                                good_star.green(),
+                                hash,
+                                w
+                            ));
+                            found.fetch_add(1, Ordering::Relaxed);
+                        }
+                    }
+                }
                 "md5-salt" => {
                     for h in hashes {
                         if let Some((salt, target)) = h.split_once(':') {
