@@ -90,10 +90,10 @@ jobs:
           Section: utils
           Priority: optional
           Architecture: amd64
-          Maintainer: Unknown
+          Maintainer: Erikgavs
           Depends:
-          Description: High-performance Rust-based brute-force tool for security testing
-           Optimized for speed, efficiency, and control in password/hash cracking workflows.
+          Description: A blazing-fast, multithreaded hash cracker built with Rust.
+           Crack hashes using wordlist-based dictionary attacks. Powered by rayon for parallel processing across all CPU cores.
           EOF
 
           dpkg-deb --build pkg ${NAME}_${VERSION}_amd64.deb
