@@ -274,6 +274,138 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
         return found.load(Ordering::Relaxed);
     }
 
+    if hash_type == "md5-salt" {
+        parallel_crack(wordlist, rule, &bar, |w| {
+            for h in hashes {
+                if let Some((salt, target)) = h.split_once(':') {
+                    let hash = hashes::md5::crack_with_salt(w, salt);
+                    if hash == target {
+                        bar.println(format!(
+                            "{} hash cracked [salt:{}] {} -> {}",
+                            star.green(),
+                            salt,
+                            target,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+        bar.finish();
+        return found.load(Ordering::Relaxed);
+    }
+
+    if hash_type == "sha1-salt" {
+        parallel_crack(wordlist, rule, &bar, |w| {
+            for h in hashes {
+                if let Some((salt, target)) = h.split_once(':') {
+                    let hash = hashes::sha1_hash::crack_with_salt(w, salt);
+                    if hash == target {
+                        bar.println(format!(
+                            "{} hash cracked [salt:{}] {} -> {}",
+                            star.green(),
+                            salt,
+                            target,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+        bar.finish();
+        return found.load(Ordering::Relaxed);
+    }
+
+    if hash_type == "sha256-salt" {
+        parallel_crack(wordlist, rule, &bar, |w| {
+            for h in hashes {
+                if let Some((salt, target)) = h.split_once(':') {
+                    let hash = hashes::sha256::crack_with_salt(w, salt);
+                    if hash == target {
+                        bar.println(format!(
+                            "{} hash cracked [salt:{}] {} -> {}",
+                            star.green(),
+                            salt,
+                            target,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+        bar.finish();
+        return found.load(Ordering::Relaxed);
+    }
+
+    if hash_type == "sha512-salt" {
+        parallel_crack(wordlist, rule, &bar, |w| {
+            for h in hashes {
+                if let Some((salt, target)) = h.split_once(':') {
+                    let hash = hashes::sha512::crack_with_salt(w, salt);
+                    if hash == target {
+                        bar.println(format!(
+                            "{} hash cracked [salt:{}] {} -> {}",
+                            star.green(),
+                            salt,
+                            target,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+        bar.finish();
+        return found.load(Ordering::Relaxed);
+    }
+
+    if hash_type == "sha3-256-salt" {
+        parallel_crack(wordlist, rule, &bar, |w| {
+            for h in hashes {
+                if let Some((salt, target)) = h.split_once(':') {
+                    let hash = hashes::sha3_256::crack_with_salt(w, salt);
+                    if hash == target {
+                        bar.println(format!(
+                            "{} hash cracked [salt:{}] {} -> {}",
+                            star.green(),
+                            salt,
+                            target,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+        bar.finish();
+        return found.load(Ordering::Relaxed);
+    }
+
+    if hash_type == "sha3-512-salt" {
+        parallel_crack(wordlist, rule, &bar, |w| {
+            for h in hashes {
+                if let Some((salt, target)) = h.split_once(':') {
+                    let hash = hashes::sha3_512::crack_with_salt(w, salt);
+                    if hash == target {
+                        bar.println(format!(
+                            "{} hash cracked [salt:{}] {} -> {}",
+                            star.green(),
+                            salt,
+                            target,
+                            w
+                        ));
+                        found.fetch_add(1, Ordering::Relaxed);
+                    }
+                }
+            }
+        });
+        bar.finish();
+        return found.load(Ordering::Relaxed);
+    }
+
     // .par_bridge, iterates in paralel, for_each (each line, it's a word)
     wordlist.lines().par_bridge().for_each(|word| {
         bar.inc(1);
