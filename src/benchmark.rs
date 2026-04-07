@@ -35,8 +35,18 @@ fn run_single_suite(input: &str, iterations: usize) {
     run_single("SHA1", crate::hashes::sha1_hash::crack, input, iterations);
     run_single("SHA256", crate::hashes::sha256::crack, input, iterations);
     run_single("SHA512", crate::hashes::sha512::crack, input, iterations);
-    run_single("SHA3-256", crate::hashes::sha3_256::crack, input, iterations);
-    run_single("SHA3-512", crate::hashes::sha3_512::crack, input, iterations);
+    run_single(
+        "SHA3-256",
+        crate::hashes::sha3_256::crack,
+        input,
+        iterations,
+    );
+    run_single(
+        "SHA3-512",
+        crate::hashes::sha3_512::crack,
+        input,
+        iterations,
+    );
 }
 
 fn run_parallel_suite(input: &str, iterations: usize) {
@@ -44,8 +54,18 @@ fn run_parallel_suite(input: &str, iterations: usize) {
     run_parallel("SHA1", crate::hashes::sha1_hash::crack, input, iterations);
     run_parallel("SHA256", crate::hashes::sha256::crack, input, iterations);
     run_parallel("SHA512", crate::hashes::sha512::crack, input, iterations);
-    run_parallel("SHA3-256", crate::hashes::sha3_256::crack, input, iterations);
-    run_parallel("SHA3-512", crate::hashes::sha3_512::crack, input, iterations);
+    run_parallel(
+        "SHA3-256",
+        crate::hashes::sha3_256::crack,
+        input,
+        iterations,
+    );
+    run_parallel(
+        "SHA3-512",
+        crate::hashes::sha3_512::crack,
+        input,
+        iterations,
+    );
 }
 
 fn run_single<F>(name: &str, func: F, input: &str, iterations: usize)

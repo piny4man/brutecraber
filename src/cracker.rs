@@ -6,8 +6,7 @@ use rayon::prelude::*;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usize {
-    let good_star = "[*]";
-    let bad_star = "[*]";
+    let star = "[*]";
 
     // BAR
     let total = wordlist.lines().count() as u64;
@@ -48,7 +47,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     ];
 
     if !valid_types.contains(&hash_type) {
-        bar.println(format!("\n{} unsupported type of hash", bad_star.red()));
+        bar.println(format!("\n{} unsupported type of hash", "[!]".red()));
         bar.finish();
         return 0;
     }
@@ -69,12 +68,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "md5" => {
                     let hash = hashes::md5::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -87,7 +81,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hex == hash {
                                 bar.println(format!(
                                     "{} hash decoded and cracked {} -> {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     h,
                                     hex,
                                     w
@@ -100,12 +94,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "sha1" => {
                     let hash = hashes::sha1_hash::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -118,7 +107,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hex == hash {
                                 bar.println(format!(
                                     "{} hash decoded and cracked {} -> {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     h,
                                     hex,
                                     w
@@ -131,12 +120,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "sha256" => {
                     let hash = hashes::sha256::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -149,7 +133,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hex == hash {
                                 bar.println(format!(
                                     "{} hash decoded and cracked {} -> {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     h,
                                     hex,
                                     w
@@ -162,12 +146,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "sha512" => {
                     let hash = hashes::sha512::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -180,7 +159,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hex == hash {
                                 bar.println(format!(
                                     "{} hash decoded and cracked {} -> {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     h,
                                     hex,
                                     w
@@ -193,24 +172,14 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "sha3-256" => {
                     let hash = hashes::sha3_256::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
                 "sha3-512" => {
                     let hash = hashes::sha3_512::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
@@ -223,7 +192,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hex == hash {
                                 bar.println(format!(
                                     "{} hash decoded and cracked {} -> {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     h,
                                     hex,
                                     w
@@ -236,22 +205,12 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "sha256/sha3-256" => {
                     let hash = hashes::sha256::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     } else {
                         let hash = hashes::sha3_256::crack(w);
                         if hashes.contains(&hash.as_str()) {
-                            bar.println(format!(
-                                "{} hash cracked {} -> {}",
-                                good_star.green(),
-                                hash,
-                                w
-                            ));
+                            bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                             found.fetch_add(1, Ordering::Relaxed);
                         }
                     }
@@ -259,22 +218,12 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "sha512/sha3-512" => {
                     let hash = hashes::sha512::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     } else {
                         let hash = hashes::sha3_512::crack(w);
                         if hashes.contains(&hash.as_str()) {
-                            bar.println(format!(
-                                "{} hash cracked {} -> {}",
-                                good_star.green(),
-                                hash,
-                                w
-                            ));
+                            bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                             found.fetch_add(1, Ordering::Relaxed);
                         }
                     }
@@ -286,7 +235,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     salt,
                                     target,
                                     w
@@ -303,7 +252,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     salt,
                                     target,
                                     w
@@ -320,7 +269,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     salt,
                                     target,
                                     w
@@ -337,7 +286,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     salt,
                                     target,
                                     w
@@ -354,7 +303,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     salt,
                                     target,
                                     w
@@ -374,7 +323,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hex == hash {
                                 bar.println(format!(
                                     "{} hash decoded and cracked {} -> {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     h,
                                     hex,
                                     w
@@ -391,7 +340,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                             if hash == target {
                                 bar.println(format!(
                                     "{} hash cracked [salt:{}] {} -> {}",
-                                    good_star.green(),
+                                    star.green(),
                                     salt,
                                     target,
                                     w
@@ -404,12 +353,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "bcrypt" => {
                     for h in hashes {
                         if hashes::bcrypt::crack(w, h) {
-                            bar.println(format!(
-                                "{} hash cracked {} -> {}",
-                                good_star.green(),
-                                h,
-                                w
-                            ));
+                            bar.println(format!("{} hash cracked {} -> {}", star.green(), h, w));
                             found.fetch_add(1, Ordering::Relaxed);
                         }
                     }
@@ -417,17 +361,12 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                 "ntlm" => {
                     let hash = hashes::ntlm::crack(w);
                     if hashes.contains(&hash.as_str()) {
-                        bar.println(format!(
-                            "{} hash cracked {} -> {}",
-                            good_star.green(),
-                            hash,
-                            w
-                        ));
+                        bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                         found.fetch_add(1, Ordering::Relaxed);
                     }
                 }
                 _ => {
-                    bar.println(format!("\n{} unsupported type of hash", bad_star.red()));
+                    bar.println(format!("\n{} unsupported type of hash", "[!]".red()));
                     return;
                 }
             }
