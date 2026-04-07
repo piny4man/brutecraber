@@ -31,7 +31,7 @@ Crack hashes using wordlist-based dictionary attacks. Powered by `rayon` for par
 - **Fast** — Multithreaded by default. Uses all your CPU cores out of the box.
 - **Simple** — One command. No config files. No setup.
 - **Smart** — Auto-detects hash types. Just point it at a file and go.
-- **17 modes** — Hex, Base64, Salted, Bcrypt, NTLM, and SHA3-256 support.
+- **20 modes** — Hex, Base64, Salted, Bcrypt, NTLM, SHA3-256 and SHA3-512 support.
 
 ---
 
@@ -102,6 +102,7 @@ The binary will be at `./target/release/brutecraber`.
 | `-w` | Path to wordlist file | *required* |
 | `-t` | Hash type (see table below) | `auto` |
 | `-r` / `--rules` | Enable rule-based transformations | `false` |
+| `--benchmark` | Run benchmark mode (measures H/s) | `false` |
 | `-h` | Show help | — |
 | `-V` | Show version | — |
 
@@ -126,6 +127,7 @@ The binary will be at `./target/release/brutecraber`.
 | SHA256 | `sha256` | `sha256-base64` | `sha256-salt` |
 | SHA512 | `sha512` | `sha512-base64` | `sha512-salt` |
 | SHA3-256 | `sha3-256` | `sha3-256-base64` | `sha3-256-salt` |
+| SHA3-512 | `sha3-512` | `sha3-512-base64` | `sha3-512-salt` |
 | Bcrypt | `bcrypt` | — | — |
 | NTLM | `ntlm` | — | — |
 
@@ -143,6 +145,7 @@ brutecraber/
 │   ├── cracker.rs       # Core cracking logic (multithreaded)
 │   ├── detector.rs      # Auto-detection by hash length
 │   ├── rules.rs         # Rule-based word transformations
+│   ├── benchmark.rs     # Benchmark mode (H/s measurements)
 │   └── hashes/
 │       ├── mod.rs       # Module exports
 │       ├── md5.rs       # MD5 hashing
@@ -150,8 +153,9 @@ brutecraber/
 │       ├── sha256.rs    # SHA256 hashing
 │       ├── sha512.rs    # SHA512 hashing
 │       ├── sha3_256.rs  # SHA3-256 hashing
+│       ├── sha3_512.rs  # SHA3-512 hashing
 │       ├── bcrypt.rs    # Bcrypt verification
-│       └── ntlm.rs     # NTLM hashing (Windows)
+│       └── ntlm.rs      # NTLM hashing (Windows)
 ├── tests/               # Test hashes and wordlists
 ├── Cargo.toml
 ├── CHANGELOG.md
@@ -166,7 +170,7 @@ brutecraber/
 - [x] Bcrypt support
 - [x] NTLM hash support
 - [ ] Output results to file (`-o`)
-- [ ] Benchmark mode (`--benchmark`)
+- [x] Benchmark mode (`--benchmark`)
 - [ ] Statistics (time, hashes/sec)
 - [x] Rule-based transformations (leet speak, capitalize, append numbers)
 
