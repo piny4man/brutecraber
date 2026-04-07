@@ -4,6 +4,18 @@ All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](https://keepachangelog.com/).
 
+## [0.8.0] - 2026-04-07
+
+### Added
+- SHA3-512 hash cracking support (hex, base64, salted)
+- Dual auto-detection for SHA512/SHA3-512 hashes (128-char length)
+- Benchmark mode (`--benchmark`) — measures hashes per second (H/s) in single-thread and multi-thread (Rayon)
+- CPU info output during benchmark (Rayon threads, available cores)
+- Test files for SHA3-512 in `tests/hashes/sha3-512/`
+
+### Contributors
+- @aniketchavan2211 — Benchmark mode (#42), CI/CD workflow improvements (#38)
+
 ## [0.7.0] - 2026-04-02
 
 ### Added
