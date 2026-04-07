@@ -1,5 +1,5 @@
 use crate::hashes;
-use base64::{engine::general_purpose, Engine};
+use base64::{engine::general_purpose, prelude::BASE64_STANDARD, Engine};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
@@ -43,7 +43,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
         "sha3-256-salt",
         "sha256/sha3-256",
         "sha3-512",
-        "sha3-512",
+        "sha3-512-base64",
         "sha3-512-salt",
         "bcrypt",
         "ntlm",
@@ -336,6 +336,26 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
                                     good_star.green(),
                                     salt,
                                     target,
+                                    w
+                                ));
+                                found.fetch_add(1, Ordering::Relaxed);
+                            }
+                        }
+                    }
+                }
+                "sha3-512-base64" => {
+                    let hash = hashes::sha3_512::crack(w);
+                    for h in hashes {
+                        if let Ok(decoded) = general_purpose::STANDARD.decode(h) {
+                            let hex: String =
+                                decoded.iter().map(|m| format!("{:02x}", m)).collect();
+
+                            if hex == hash {
+                                bar.println(format!(
+                                    "{} hash decoded and cracked {} -> {} -> {}",
+                                    good_star.green(),
+                                    h,
+                                    hex,
                                     w
                                 ));
                                 found.fetch_add(1, Ordering::Relaxed);
