@@ -463,8 +463,17 @@ fn parallel_crack<F>(wordlist: &str, rule: bool, bar: &ProgressBar, matcher: F)
 where
     F: Fn(&str) + Sync + Send,
 {
+    use std::sync::atomic::{AtomicU64, Ordering};
+
+    let counter = AtomicU64::new(0);
+    let update_interval = 1000;
+
     wordlist.lines().par_bridge().for_each(|word| {
-        bar.inc(1);
+        let count = counter.fetch_add(1, Ordering::Relaxed);
+
+        if count % update_interval == 0 {
+            bar.inc(update_interval)
+        }
 
         if rule {
             for w in crate::rules::apply(word) {
@@ -474,4 +483,10 @@ where
             matcher(word);
         }
     });
+
+    let total = counter.load(Ordering::Relaxed);
+    let remainder = total % update_interval;
+    if remainder > 0 {
+        bar.inc(remainder)
+    }
 }
