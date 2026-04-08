@@ -22,3 +22,6 @@ sha3 = "0.10.8"
 num_cpus = "1.17.0"
 faster-hex = "0.10.0"
 argon2 = "0.5.3"
+
+[dev-dependencies]
+argon2 = "0.5.3"
