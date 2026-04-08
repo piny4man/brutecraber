@@ -68,9 +68,9 @@ fn run_parallel_suite(input: &str, iterations: usize) {
     );
 }
 
-fn run_single<F>(name: &str, func: F, input: &str, iterations: usize)
+fn run_single<F, T>(name: &str, func: F, input: &str, iterations: usize)
 where
-    F: Fn(&str) -> String,
+    F: Fn(&str) -> T,
 {
     for _ in 0..10_000 {
         func(input);
@@ -86,9 +86,9 @@ where
     print_result(name, iterations, duration);
 }
 
-fn run_parallel<F>(name: &str, func: F, input: &str, iterations: usize)
+fn run_parallel<F, T>(name: &str, func: F, input: &str, iterations: usize)
 where
-    F: Fn(&str) -> String + Sync + Send,
+    F: Fn(&str) -> T + Sync + Send,
 {
     (0..10_000).into_par_iter().for_each(|_| {
         func(input);
