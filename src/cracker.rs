@@ -3,6 +3,7 @@ use base64::{engine::general_purpose, Engine};
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
 use rayon::prelude::*;
+use std::collections::HashSet;
 use std::sync::atomic::{AtomicUsize, Ordering};
 
 pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usize {
@@ -52,10 +53,12 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
         return 0;
     }
 
+    let target_set: HashSet<&str> = hashes.iter().copied().collect();
+
     if hash_type == "md5" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::md5::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -67,7 +70,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha1" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha1_hash::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -79,7 +82,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha256" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha256::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -91,7 +94,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha512" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha512::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -103,7 +106,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha3-256" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha3_256::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -115,7 +118,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha3-512" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha3_512::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -127,7 +130,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "ntlm" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::ntlm::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             }
@@ -409,12 +412,12 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha256/sha3-256" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha256::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             } else {
                 let hash = hashes::sha3_256::crack(w);
-                if hashes.contains(&hash.as_str()) {
+                if target_set.contains(hash.as_str()) {
                     bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                     found.fetch_add(1, Ordering::Relaxed);
                 }
@@ -427,12 +430,12 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "sha512/sha3-512" {
         parallel_crack(wordlist, rule, &bar, |w| {
             let hash = hashes::sha512::crack(w);
-            if hashes.contains(&hash.as_str()) {
+            if target_set.contains(hash.as_str()) {
                 bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                 found.fetch_add(1, Ordering::Relaxed);
             } else {
                 let hash = hashes::sha3_512::crack(w);
-                if hashes.contains(&hash.as_str()) {
+                if target_set.contains(hash.as_str()) {
                     bar.println(format!("{} hash cracked {} -> {}", star.green(), hash, w));
                     found.fetch_add(1, Ordering::Relaxed);
                 }
