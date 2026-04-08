@@ -581,30 +581,21 @@ fn parallel_crack<F>(wordlist: &str, rule: bool, bar: &ProgressBar, matcher: F)
 where
     F: Fn(&str) + Sync + Send,
 {
-    use std::sync::atomic::{AtomicU64, Ordering};
+    const CHUNK_SIZE: usize = 64;
 
-    let counter = AtomicU64::new(0);
-    let update_interval = 1000;
+    let lines: Vec<&str> = wordlist.lines().collect();
 
-    wordlist.lines().par_bridge().for_each(|word| {
-        let count = counter.fetch_add(1, Ordering::Relaxed);
+    lines.par_chunks(CHUNK_SIZE).for_each(|chunk| {
+        bar.inc(chunk.len() as u64);
 
-        if count % update_interval == 0 {
-            bar.inc(update_interval)
-        }
-
-        if rule {
-            for w in crate::rules::apply(word) {
-                matcher(&w);
+        for word in chunk {
+            if rule {
+                for w in crate::rules::apply(word) {
+                    matcher(&w);
+                }
+            } else {
+                matcher(word);
             }
-        } else {
-            matcher(word);
         }
     });
-
-    let total = counter.load(Ordering::Relaxed);
-    let remainder = total % update_interval;
-    if remainder > 0 {
-        bar.inc(remainder)
-    }
 }
