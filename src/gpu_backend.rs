@@ -2,13 +2,13 @@ use crate::backend::CrackingBackend;
 use crate::cpu_backend::CpuBackend;
 use colored::Colorize;
 use indicatif::{ProgressBar, ProgressStyle};
-use opencl3::command_queue::{CommandQueue, CL_QUEUE_PROFILING_ENABLE};
+use opencl3::command_queue::{CL_QUEUE_PROFILING_ENABLE, CommandQueue};
 use opencl3::context::Context;
-use opencl3::device::{Device, get_all_devices, CL_DEVICE_TYPE_GPU};
+use opencl3::device::{CL_DEVICE_TYPE_GPU, Device, get_all_devices};
 use opencl3::kernel::{ExecuteKernel, Kernel};
 use opencl3::memory::{Buffer, CL_MEM_READ_ONLY, CL_MEM_WRITE_ONLY};
 use opencl3::program::Program;
-use opencl3::types::{cl_event, CL_BLOCKING, CL_NON_BLOCKING};
+use opencl3::types::{CL_BLOCKING, CL_NON_BLOCKING, cl_event};
 use std::ptr;
 use std::time::Instant;
 
@@ -20,8 +20,9 @@ const SHA3_256_KERNEL_SOURCE: &str = include_str!("kernels/sha3_256.cl");
 const SHA3_512_KERNEL_SOURCE: &str = include_str!("kernels/sha3_512.cl");
 const NTLM_KERNEL_SOURCE: &str = include_str!("kernels/ntlm.cl");
 
-const GPU_SUPPORTED_HEX_TYPES: &[&str] =
-    &["md5", "sha1", "sha256", "sha512", "sha3-256", "sha3-512", "ntlm"];
+const GPU_SUPPORTED_HEX_TYPES: &[&str] = &[
+    "md5", "sha1", "sha256", "sha512", "sha3-256", "sha3-512", "ntlm",
+];
 
 pub struct GpuBackend {
     device: Device,
@@ -35,9 +36,7 @@ impl GpuBackend {
             .map_err(|e| format!("Failed to query GPU devices: {e}"))?;
 
         if device_ids.is_empty() {
-            return Err(
-                "No GPU devices found. Remove --gpu flag to use CPU mode.".to_string(),
-            );
+            return Err("No GPU devices found. Remove --gpu flag to use CPU mode.".to_string());
         }
 
         // Select GPU with the most compute units
@@ -125,11 +124,8 @@ impl GpuBackend {
         let num_targets = target_bytes.len() as u32;
 
         // Build OpenCL program + kernel
-        let program = match Program::create_and_build_from_source(
-            &self.context,
-            kernel_source,
-            "",
-        ) {
+        let program = match Program::create_and_build_from_source(&self.context, kernel_source, "")
+        {
             Ok(p) => p,
             Err(e) => {
                 println!(
@@ -168,9 +164,7 @@ impl GpuBackend {
         let bar = ProgressBar::new(total_words as u64);
         bar.set_style(
             ProgressStyle::default_bar()
-                .template(
-                    "\n[{elapsed_precise}] [{bar:40}] {pos}/{len} ({percent}%) {msg}\n",
-                )
+                .template("\n[{elapsed_precise}] [{bar:40}] {pos}/{len} ({percent}%) {msg}\n")
                 .unwrap()
                 .progress_chars("=> "),
         );
@@ -268,18 +262,34 @@ impl GpuBackend {
 
         unsafe {
             // Allocate device buffers
-            let mut words_buf =
-                Buffer::<u8>::create(&self.context, CL_MEM_READ_ONLY, words_data.len(), ptr::null_mut())
-                    .map_err(&err)?;
-            let mut offsets_buf =
-                Buffer::<u32>::create(&self.context, CL_MEM_READ_ONLY, offsets.len(), ptr::null_mut())
-                    .map_err(&err)?;
-            let mut lengths_buf =
-                Buffer::<u32>::create(&self.context, CL_MEM_READ_ONLY, lengths.len(), ptr::null_mut())
-                    .map_err(&err)?;
-            let mut targets_buf =
-                Buffer::<u8>::create(&self.context, CL_MEM_READ_ONLY, target_flat.len(), ptr::null_mut())
-                    .map_err(&err)?;
+            let mut words_buf = Buffer::<u8>::create(
+                &self.context,
+                CL_MEM_READ_ONLY,
+                words_data.len(),
+                ptr::null_mut(),
+            )
+            .map_err(&err)?;
+            let mut offsets_buf = Buffer::<u32>::create(
+                &self.context,
+                CL_MEM_READ_ONLY,
+                offsets.len(),
+                ptr::null_mut(),
+            )
+            .map_err(&err)?;
+            let mut lengths_buf = Buffer::<u32>::create(
+                &self.context,
+                CL_MEM_READ_ONLY,
+                lengths.len(),
+                ptr::null_mut(),
+            )
+            .map_err(&err)?;
+            let mut targets_buf = Buffer::<u8>::create(
+                &self.context,
+                CL_MEM_READ_ONLY,
+                target_flat.len(),
+                ptr::null_mut(),
+            )
+            .map_err(&err)?;
             let results_buf =
                 Buffer::<u32>::create(&self.context, CL_MEM_WRITE_ONLY, num_words, ptr::null_mut())
                     .map_err(&err)?;
@@ -471,25 +481,113 @@ impl CrackingBackend for GpuBackend {
         };
 
         match hash_type {
-            "md5" => self.crack_hash(hashes, effective_wordlist, MD5_KERNEL_SOURCE, "md5_crack", 32, 16, "MD5"),
-            "sha1" => self.crack_hash(hashes, effective_wordlist, SHA1_KERNEL_SOURCE, "sha1_crack", 40, 20, "SHA1"),
-            "sha256" => self.crack_hash(hashes, effective_wordlist, SHA256_KERNEL_SOURCE, "sha256_crack", 64, 32, "SHA256"),
-            "sha512" => self.crack_hash(hashes, effective_wordlist, SHA512_KERNEL_SOURCE, "sha512_crack", 128, 64, "SHA512"),
-            "sha3-256" => self.crack_hash(hashes, effective_wordlist, SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 64, 32, "SHA3-256"),
-            "sha3-512" => self.crack_hash(hashes, effective_wordlist, SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 128, 64, "SHA3-512"),
-            "ntlm" => self.crack_hash(hashes, effective_wordlist, NTLM_KERNEL_SOURCE, "ntlm_crack", 32, 16, "NTLM"),
+            "md5" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                MD5_KERNEL_SOURCE,
+                "md5_crack",
+                32,
+                16,
+                "MD5",
+            ),
+            "sha1" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                SHA1_KERNEL_SOURCE,
+                "sha1_crack",
+                40,
+                20,
+                "SHA1",
+            ),
+            "sha256" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                SHA256_KERNEL_SOURCE,
+                "sha256_crack",
+                64,
+                32,
+                "SHA256",
+            ),
+            "sha512" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                SHA512_KERNEL_SOURCE,
+                "sha512_crack",
+                128,
+                64,
+                "SHA512",
+            ),
+            "sha3-256" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                SHA3_256_KERNEL_SOURCE,
+                "sha3_256_crack",
+                64,
+                32,
+                "SHA3-256",
+            ),
+            "sha3-512" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                SHA3_512_KERNEL_SOURCE,
+                "sha3_512_crack",
+                128,
+                64,
+                "SHA3-512",
+            ),
+            "ntlm" => self.crack_hash(
+                hashes,
+                effective_wordlist,
+                NTLM_KERNEL_SOURCE,
+                "ntlm_crack",
+                32,
+                16,
+                "NTLM",
+            ),
             "sha256/sha3-256" => {
                 println!(" {} Dual-mode: trying SHA256 on GPU...", "[*]".green());
-                let found_sha256 = self.crack_hash(hashes, effective_wordlist, SHA256_KERNEL_SOURCE, "sha256_crack", 64, 32, "SHA256");
+                let found_sha256 = self.crack_hash(
+                    hashes,
+                    effective_wordlist,
+                    SHA256_KERNEL_SOURCE,
+                    "sha256_crack",
+                    64,
+                    32,
+                    "SHA256",
+                );
                 println!(" {} Dual-mode: trying SHA3-256 on GPU...", "[*]".green());
-                let found_sha3 = self.crack_hash(hashes, effective_wordlist, SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 64, 32, "SHA3-256");
+                let found_sha3 = self.crack_hash(
+                    hashes,
+                    effective_wordlist,
+                    SHA3_256_KERNEL_SOURCE,
+                    "sha3_256_crack",
+                    64,
+                    32,
+                    "SHA3-256",
+                );
                 found_sha256 + found_sha3
             }
             "sha512/sha3-512" => {
                 println!(" {} Dual-mode: trying SHA512 on GPU...", "[*]".green());
-                let found_sha512 = self.crack_hash(hashes, effective_wordlist, SHA512_KERNEL_SOURCE, "sha512_crack", 128, 64, "SHA512");
+                let found_sha512 = self.crack_hash(
+                    hashes,
+                    effective_wordlist,
+                    SHA512_KERNEL_SOURCE,
+                    "sha512_crack",
+                    128,
+                    64,
+                    "SHA512",
+                );
                 println!(" {} Dual-mode: trying SHA3-512 on GPU...", "[*]".green());
-                let found_sha3 = self.crack_hash(hashes, effective_wordlist, SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 128, 64, "SHA3-512");
+                let found_sha3 = self.crack_hash(
+                    hashes,
+                    effective_wordlist,
+                    SHA3_512_KERNEL_SOURCE,
+                    "sha3_512_crack",
+                    128,
+                    64,
+                    "SHA3-512",
+                );
                 found_sha512 + found_sha3
             }
             _ => CpuBackend.run(hashes, wordlist, hash_type, rule),
@@ -534,9 +632,8 @@ mod tests {
         target_hex: &str,
         digest_size: usize,
     ) -> bool {
-        let program =
-            Program::create_and_build_from_source(&gpu.context, kernel_source, "")
-                .expect("Failed to build kernel");
+        let program = Program::create_and_build_from_source(&gpu.context, kernel_source, "")
+            .expect("Failed to build kernel");
         let kernel = Kernel::create(&program, kernel_fn).expect("Failed to create kernel");
 
         let words_data = word.as_bytes().to_vec();
@@ -566,9 +663,8 @@ mod tests {
         target_hexes: &[&str],
         digest_size: usize,
     ) -> Vec<Option<usize>> {
-        let program =
-            Program::create_and_build_from_source(&gpu.context, kernel_source, "")
-                .expect("Failed to build kernel");
+        let program = Program::create_and_build_from_source(&gpu.context, kernel_source, "")
+            .expect("Failed to build kernel");
         let kernel = Kernel::create(&program, kernel_fn).expect("Failed to create kernel");
 
         let mut words_data = Vec::new();
@@ -628,17 +724,29 @@ mod tests {
     fn kernel_md5_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, MD5_KERNEL_SOURCE, "md5_crack",
-            "password", "5f4dcc3b5aa765d61d8327deb882cf99", 16,
+            &gpu,
+            MD5_KERNEL_SOURCE,
+            "md5_crack",
+            "password",
+            "5f4dcc3b5aa765d61d8327deb882cf99",
+            16,
         ));
         assert!(kernel_matches(
-            &gpu, MD5_KERNEL_SOURCE, "md5_crack",
-            "admin", "21232f297a57a5a743894a0e4a801fc3", 16,
+            &gpu,
+            MD5_KERNEL_SOURCE,
+            "md5_crack",
+            "admin",
+            "21232f297a57a5a743894a0e4a801fc3",
+            16,
         ));
         // Negative: wrong hash must not match
         assert!(!kernel_matches(
-            &gpu, MD5_KERNEL_SOURCE, "md5_crack",
-            "password", "00000000000000000000000000000000", 16,
+            &gpu,
+            MD5_KERNEL_SOURCE,
+            "md5_crack",
+            "password",
+            "00000000000000000000000000000000",
+            16,
         ));
     }
 
@@ -647,16 +755,28 @@ mod tests {
     fn kernel_sha1_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, SHA1_KERNEL_SOURCE, "sha1_crack",
-            "password", "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8", 20,
+            &gpu,
+            SHA1_KERNEL_SOURCE,
+            "sha1_crack",
+            "password",
+            "5baa61e4c9b93f3f0682250b6cf8331b7ee68fd8",
+            20,
         ));
         assert!(kernel_matches(
-            &gpu, SHA1_KERNEL_SOURCE, "sha1_crack",
-            "admin", "d033e22ae348aeb5660fc2140aec35850c4da997", 20,
+            &gpu,
+            SHA1_KERNEL_SOURCE,
+            "sha1_crack",
+            "admin",
+            "d033e22ae348aeb5660fc2140aec35850c4da997",
+            20,
         ));
         assert!(!kernel_matches(
-            &gpu, SHA1_KERNEL_SOURCE, "sha1_crack",
-            "password", "0000000000000000000000000000000000000000", 20,
+            &gpu,
+            SHA1_KERNEL_SOURCE,
+            "sha1_crack",
+            "password",
+            "0000000000000000000000000000000000000000",
+            20,
         ));
     }
 
@@ -665,19 +785,28 @@ mod tests {
     fn kernel_sha256_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, SHA256_KERNEL_SOURCE, "sha256_crack",
+            &gpu,
+            SHA256_KERNEL_SOURCE,
+            "sha256_crack",
             "password",
-            "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8", 32,
+            "5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8",
+            32,
         ));
         assert!(kernel_matches(
-            &gpu, SHA256_KERNEL_SOURCE, "sha256_crack",
+            &gpu,
+            SHA256_KERNEL_SOURCE,
+            "sha256_crack",
             "admin",
-            "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918", 32,
+            "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918",
+            32,
         ));
         assert!(!kernel_matches(
-            &gpu, SHA256_KERNEL_SOURCE, "sha256_crack",
+            &gpu,
+            SHA256_KERNEL_SOURCE,
+            "sha256_crack",
             "password",
-            "0000000000000000000000000000000000000000000000000000000000000000", 32,
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            32,
         ));
     }
 
@@ -686,22 +815,31 @@ mod tests {
     fn kernel_sha512_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, SHA512_KERNEL_SOURCE, "sha512_crack",
+            &gpu,
+            SHA512_KERNEL_SOURCE,
+            "sha512_crack",
             "password",
             "b109f3bbbc244eb82441917ed06d618b9008dd09b3befd1b5e07394c706a8bb9\
-             80b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86", 64,
+             80b1d7785e5976ec049b46df5f1326af5a2ea6d103fd07c95385ffab0cacbc86",
+            64,
         ));
         assert!(kernel_matches(
-            &gpu, SHA512_KERNEL_SOURCE, "sha512_crack",
+            &gpu,
+            SHA512_KERNEL_SOURCE,
+            "sha512_crack",
             "admin",
             "c7ad44cbad762a5da0a452f9e854fdc1e0e7a52a38015f23f3eab1d80b931dd4\
-             72634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec", 64,
+             72634dfac71cd34ebc35d16ab7fb8a90c81f975113d6c7538dc69dd8de9077ec",
+            64,
         ));
         assert!(!kernel_matches(
-            &gpu, SHA512_KERNEL_SOURCE, "sha512_crack",
+            &gpu,
+            SHA512_KERNEL_SOURCE,
+            "sha512_crack",
             "password",
             "0000000000000000000000000000000000000000000000000000000000000000\
-             0000000000000000000000000000000000000000000000000000000000000000", 64,
+             0000000000000000000000000000000000000000000000000000000000000000",
+            64,
         ));
     }
 
@@ -710,19 +848,28 @@ mod tests {
     fn kernel_sha3_256_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, SHA3_256_KERNEL_SOURCE, "sha3_256_crack",
+            &gpu,
+            SHA3_256_KERNEL_SOURCE,
+            "sha3_256_crack",
             "password",
-            "c0067d4af4e87f00dbac63b6156828237059172d1bbeac67427345d6a9fda484", 32,
+            "c0067d4af4e87f00dbac63b6156828237059172d1bbeac67427345d6a9fda484",
+            32,
         ));
         assert!(kernel_matches(
-            &gpu, SHA3_256_KERNEL_SOURCE, "sha3_256_crack",
+            &gpu,
+            SHA3_256_KERNEL_SOURCE,
+            "sha3_256_crack",
             "admin",
-            "fb001dfcffd1c899f3297871406242f097aecf1a5342ccf3ebcd116146188e4b", 32,
+            "fb001dfcffd1c899f3297871406242f097aecf1a5342ccf3ebcd116146188e4b",
+            32,
         ));
         assert!(!kernel_matches(
-            &gpu, SHA3_256_KERNEL_SOURCE, "sha3_256_crack",
+            &gpu,
+            SHA3_256_KERNEL_SOURCE,
+            "sha3_256_crack",
             "password",
-            "0000000000000000000000000000000000000000000000000000000000000000", 32,
+            "0000000000000000000000000000000000000000000000000000000000000000",
+            32,
         ));
     }
 
@@ -731,22 +878,31 @@ mod tests {
     fn kernel_sha3_512_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, SHA3_512_KERNEL_SOURCE, "sha3_512_crack",
+            &gpu,
+            SHA3_512_KERNEL_SOURCE,
+            "sha3_512_crack",
             "password",
             "e9a75486736a550af4fea861e2378305c4a555a05094dee1dca2f68afea49cc3\
-             a50e8de6ea131ea521311f4d6fb054a146e8282f8e35ff2e6368c1a62e909716", 64,
+             a50e8de6ea131ea521311f4d6fb054a146e8282f8e35ff2e6368c1a62e909716",
+            64,
         ));
         assert!(kernel_matches(
-            &gpu, SHA3_512_KERNEL_SOURCE, "sha3_512_crack",
+            &gpu,
+            SHA3_512_KERNEL_SOURCE,
+            "sha3_512_crack",
             "admin",
             "5a38afb1a18d408e6cd367f9db91e2ab9bce834cdad3da24183cc174956c20ce\
-             35dd39c2bd36aae907111ae3d6ada353f7697a5f1a8fc567aae9e4ca41a9d19d", 64,
+             35dd39c2bd36aae907111ae3d6ada353f7697a5f1a8fc567aae9e4ca41a9d19d",
+            64,
         ));
         assert!(!kernel_matches(
-            &gpu, SHA3_512_KERNEL_SOURCE, "sha3_512_crack",
+            &gpu,
+            SHA3_512_KERNEL_SOURCE,
+            "sha3_512_crack",
             "password",
             "0000000000000000000000000000000000000000000000000000000000000000\
-             0000000000000000000000000000000000000000000000000000000000000000", 64,
+             0000000000000000000000000000000000000000000000000000000000000000",
+            64,
         ));
     }
 
@@ -755,16 +911,28 @@ mod tests {
     fn kernel_ntlm_known_vectors() {
         let gpu = init_gpu();
         assert!(kernel_matches(
-            &gpu, NTLM_KERNEL_SOURCE, "ntlm_crack",
-            "password", "8846f7eaee8fb117ad06bdd830b7586c", 16,
+            &gpu,
+            NTLM_KERNEL_SOURCE,
+            "ntlm_crack",
+            "password",
+            "8846f7eaee8fb117ad06bdd830b7586c",
+            16,
         ));
         assert!(kernel_matches(
-            &gpu, NTLM_KERNEL_SOURCE, "ntlm_crack",
-            "admin", "209c6174da490caeb422f3fa5a7ae634", 16,
+            &gpu,
+            NTLM_KERNEL_SOURCE,
+            "ntlm_crack",
+            "admin",
+            "209c6174da490caeb422f3fa5a7ae634",
+            16,
         ));
         assert!(!kernel_matches(
-            &gpu, NTLM_KERNEL_SOURCE, "ntlm_crack",
-            "password", "00000000000000000000000000000000", 16,
+            &gpu,
+            NTLM_KERNEL_SOURCE,
+            "ntlm_crack",
+            "password",
+            "00000000000000000000000000000000",
+            16,
         ));
     }
 
@@ -781,9 +949,8 @@ mod tests {
             "5f4dcc3b5aa765d61d8327deb882cf99", // password → target 0
             "21232f297a57a5a743894a0e4a801fc3", // admin    → target 1
         ];
-        let results = kernel_batch_results(
-            &gpu, MD5_KERNEL_SOURCE, "md5_crack", words, targets, 16,
-        );
+        let results =
+            kernel_batch_results(&gpu, MD5_KERNEL_SOURCE, "md5_crack", words, targets, 16);
         assert_eq!(results[0], None, "hello should not match");
         assert_eq!(results[1], Some(0), "password should match target 0");
         assert_eq!(results[2], Some(1), "admin should match target 1");
@@ -800,7 +967,12 @@ mod tests {
             "8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918", // admin    → 1
         ];
         let results = kernel_batch_results(
-            &gpu, SHA256_KERNEL_SOURCE, "sha256_crack", words, targets, 32,
+            &gpu,
+            SHA256_KERNEL_SOURCE,
+            "sha256_crack",
+            words,
+            targets,
+            32,
         );
         assert_eq!(results[0], None, "abc should not match");
         assert_eq!(results[1], Some(0), "password should match target 0");
@@ -821,7 +993,10 @@ mod tests {
 
         let cpu = CpuBackend.run(&hashes, &wordlist, "md5", false);
         let gpu_found = init_gpu().run(&hashes, &wordlist, "md5", false);
-        assert_eq!(cpu, gpu_found, "MD5: CPU cracked {cpu} but GPU cracked {gpu_found}");
+        assert_eq!(
+            cpu, gpu_found,
+            "MD5: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
     }
 
     #[test]
@@ -833,7 +1008,10 @@ mod tests {
 
         let cpu = CpuBackend.run(&hashes, &wordlist, "sha1", false);
         let gpu_found = init_gpu().run(&hashes, &wordlist, "sha1", false);
-        assert_eq!(cpu, gpu_found, "SHA1: CPU cracked {cpu} but GPU cracked {gpu_found}");
+        assert_eq!(
+            cpu, gpu_found,
+            "SHA1: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
     }
 
     #[test]
@@ -845,7 +1023,10 @@ mod tests {
 
         let cpu = CpuBackend.run(&hashes, &wordlist, "sha256", false);
         let gpu_found = init_gpu().run(&hashes, &wordlist, "sha256", false);
-        assert_eq!(cpu, gpu_found, "SHA256: CPU cracked {cpu} but GPU cracked {gpu_found}");
+        assert_eq!(
+            cpu, gpu_found,
+            "SHA256: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
     }
 
     #[test]
@@ -857,7 +1038,10 @@ mod tests {
 
         let cpu = CpuBackend.run(&hashes, &wordlist, "sha512", false);
         let gpu_found = init_gpu().run(&hashes, &wordlist, "sha512", false);
-        assert_eq!(cpu, gpu_found, "SHA512: CPU cracked {cpu} but GPU cracked {gpu_found}");
+        assert_eq!(
+            cpu, gpu_found,
+            "SHA512: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
     }
 
     #[test]
@@ -874,8 +1058,16 @@ mod tests {
 
         let cpu = CpuBackend.run(&hash_refs, &wordlist, "sha3-256", false);
         let gpu_found = init_gpu().run(&hash_refs, &wordlist, "sha3-256", false);
-        assert_eq!(cpu, gpu_found, "SHA3-256: CPU cracked {cpu} but GPU cracked {gpu_found}");
-        assert_eq!(cpu, words.len(), "SHA3-256: expected all {} hashes cracked", words.len());
+        assert_eq!(
+            cpu, gpu_found,
+            "SHA3-256: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
+        assert_eq!(
+            cpu,
+            words.len(),
+            "SHA3-256: expected all {} hashes cracked",
+            words.len()
+        );
     }
 
     #[test]
@@ -887,7 +1079,10 @@ mod tests {
 
         let cpu = CpuBackend.run(&hashes, &wordlist, "sha3-512", false);
         let gpu_found = init_gpu().run(&hashes, &wordlist, "sha3-512", false);
-        assert_eq!(cpu, gpu_found, "SHA3-512: CPU cracked {cpu} but GPU cracked {gpu_found}");
+        assert_eq!(
+            cpu, gpu_found,
+            "SHA3-512: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
     }
 
     #[test]
@@ -899,6 +1094,9 @@ mod tests {
 
         let cpu = CpuBackend.run(&hashes, &wordlist, "ntlm", false);
         let gpu_found = init_gpu().run(&hashes, &wordlist, "ntlm", false);
-        assert_eq!(cpu, gpu_found, "NTLM: CPU cracked {cpu} but GPU cracked {gpu_found}");
+        assert_eq!(
+            cpu, gpu_found,
+            "NTLM: CPU cracked {cpu} but GPU cracked {gpu_found}"
+        );
     }
 }

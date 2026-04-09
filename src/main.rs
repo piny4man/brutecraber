@@ -45,7 +45,11 @@ struct Args {
     benchmark: bool,
 
     #[cfg(feature = "gpu")]
-    #[arg(long = "gpu", default_value_t = false, help = "Use GPU acceleration (OpenCL)")]
+    #[arg(
+        long = "gpu",
+        default_value_t = false,
+        help = "Use GPU acceleration (OpenCL)"
+    )]
     gpu: bool,
 }
 
@@ -108,9 +112,13 @@ fn main() -> anyhow::Result<()> {
     if args.benchmark {
         let use_gpu = {
             #[cfg(feature = "gpu")]
-            { args.gpu }
+            {
+                args.gpu
+            }
             #[cfg(not(feature = "gpu"))]
-            { false }
+            {
+                false
+            }
         };
         benchmark::run(use_gpu);
         return Ok(());
@@ -173,12 +181,7 @@ fn main() -> anyhow::Result<()> {
         if found == 0 {
             println!("{} failed cracking hashes or bad file\n", star.red());
         } else {
-            println!(
-                "{} cracked {}/{} hashes",
-                star.green(),
-                found,
-                hashes.len()
-            );
+            println!("{} cracked {}/{} hashes", star.green(), found, hashes.len());
         }
         return Ok(());
     }
