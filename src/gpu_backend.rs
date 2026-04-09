@@ -324,6 +324,84 @@ impl GpuBackend {
             Ok(results)
         }
     }
+
+    /// Benchmark a single algorithm on GPU. Returns (word_count, duration) if successful.
+    pub fn benchmark_algorithm(
+        &self,
+        algo: &str,
+        word_count: usize,
+    ) -> Option<std::time::Duration> {
+        let (kernel_source, kernel_fn, digest_size) = match algo {
+            "md5" => (MD5_KERNEL_SOURCE, "md5_crack", 16),
+            "sha1" => (SHA1_KERNEL_SOURCE, "sha1_crack", 20),
+            "sha256" => (SHA256_KERNEL_SOURCE, "sha256_crack", 32),
+            "sha512" => (SHA512_KERNEL_SOURCE, "sha512_crack", 64),
+            "sha3-256" => (SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 32),
+            "sha3-512" => (SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 64),
+            "ntlm" => (NTLM_KERNEL_SOURCE, "ntlm_crack", 16),
+            _ => return None,
+        };
+
+        let program =
+            Program::create_and_build_from_source(&self.context, kernel_source, "").ok()?;
+        let kernel = Kernel::create(&program, kernel_fn).ok()?;
+
+        // Generate test words (same word repeated — kernel doesn't branch on content)
+        let test_word = b"benchmark_password";
+        let mut words_data: Vec<u8> = Vec::with_capacity(test_word.len() * word_count);
+        let mut offsets: Vec<u32> = Vec::with_capacity(word_count);
+        let mut lengths: Vec<u32> = Vec::with_capacity(word_count);
+        for _ in 0..word_count {
+            offsets.push(words_data.len() as u32);
+            lengths.push(test_word.len() as u32);
+            words_data.extend_from_slice(test_word);
+        }
+
+        // Dummy non-matching target hash (all zeros)
+        let target_flat: Vec<u8> = vec![0u8; digest_size];
+        let num_targets = 1u32;
+
+        // VRAM-aware batching
+        let usable_mem = (self.gpu_mem_bytes() as f64 * 0.70) as usize;
+        let target_mem = target_flat.len() + 64;
+        let available = usable_mem.saturating_sub(target_mem);
+        let per_word_estimate: usize = 16 + 4 + 4 + 4;
+        let batch_size = (available / per_word_estimate).max(1024).min(word_count);
+
+        let start = Instant::now();
+
+        for batch_start in (0..word_count).step_by(batch_size) {
+            let batch_end = (batch_start + batch_size).min(word_count);
+            let batch_offsets = &offsets[batch_start..batch_end];
+            let batch_lengths = &lengths[batch_start..batch_end];
+            let batch_len = batch_end - batch_start;
+
+            // Compute data slice for this batch
+            let data_start = offsets[batch_start] as usize;
+            let data_end = if batch_end < word_count {
+                offsets[batch_end] as usize
+            } else {
+                words_data.len()
+            };
+            let batch_data = &words_data[data_start..data_end];
+
+            // Adjust offsets to be relative to batch_data start
+            let base_offset = offsets[batch_start];
+            let adj_offsets: Vec<u32> = batch_offsets.iter().map(|o| o - base_offset).collect();
+
+            let _ = self.execute_hash_batch(
+                &kernel,
+                batch_data,
+                &adj_offsets,
+                batch_lengths,
+                batch_len,
+                &target_flat,
+                num_targets,
+            );
+        }
+
+        Some(start.elapsed())
+    }
 }
 
 impl CrackingBackend for GpuBackend {
@@ -364,18 +442,9 @@ impl CrackingBackend for GpuBackend {
             return CpuBackend.run(hashes, wordlist, hash_type, rule);
         }
 
-        // Dual-mode / hybrid types
-        if hash_type.contains('/') {
-            println!(
-                " {} GPU acceleration does not yet support dual-mode types ('{}'). Falling back to CPU.",
-                "[!]".yellow(),
-                hash_type
-            );
-            return CpuBackend.run(hashes, wordlist, hash_type, rule);
-        }
-
-        // Unsupported hex type
-        if !GPU_SUPPORTED_HEX_TYPES.contains(&hash_type) {
+        // Unsupported hex type (check before dual-mode, since dual-mode components are supported)
+        let is_dual_mode = hash_type == "sha256/sha3-256" || hash_type == "sha512/sha3-512";
+        if !is_dual_mode && !GPU_SUPPORTED_HEX_TYPES.contains(&hash_type) {
             println!(
                 " {} GPU acceleration not supported for '{}'. Falling back to CPU.",
                 "[!]".yellow(),
@@ -384,23 +453,45 @@ impl CrackingBackend for GpuBackend {
             return CpuBackend.run(hashes, wordlist, hash_type, rule);
         }
 
-        // Rules: applied on CPU, GPU dispatch handled in Phase 4
-        if rule {
+        // Rules: expand wordlist on CPU, then dispatch to GPU
+        let expanded_wordlist: String;
+        let effective_wordlist = if rule {
             println!(
-                " {} Rules with GPU not yet supported. Falling back to CPU.",
-                "[!]".yellow()
+                " {} Applying rules on CPU, dispatching expanded wordlist to GPU...",
+                "[*]".green()
             );
-            return CpuBackend.run(hashes, wordlist, hash_type, rule);
-        }
+            expanded_wordlist = wordlist
+                .lines()
+                .flat_map(|word| crate::rules::apply(word))
+                .collect::<Vec<_>>()
+                .join("\n");
+            expanded_wordlist.as_str()
+        } else {
+            wordlist
+        };
 
         match hash_type {
-            "md5" => self.crack_hash(hashes, wordlist, MD5_KERNEL_SOURCE, "md5_crack", 32, 16, "MD5"),
-            "sha1" => self.crack_hash(hashes, wordlist, SHA1_KERNEL_SOURCE, "sha1_crack", 40, 20, "SHA1"),
-            "sha256" => self.crack_hash(hashes, wordlist, SHA256_KERNEL_SOURCE, "sha256_crack", 64, 32, "SHA256"),
-            "sha512" => self.crack_hash(hashes, wordlist, SHA512_KERNEL_SOURCE, "sha512_crack", 128, 64, "SHA512"),
-            "sha3-256" => self.crack_hash(hashes, wordlist, SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 64, 32, "SHA3-256"),
-            "sha3-512" => self.crack_hash(hashes, wordlist, SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 128, 64, "SHA3-512"),
-            "ntlm" => self.crack_hash(hashes, wordlist, NTLM_KERNEL_SOURCE, "ntlm_crack", 32, 16, "NTLM"),
+            "md5" => self.crack_hash(hashes, effective_wordlist, MD5_KERNEL_SOURCE, "md5_crack", 32, 16, "MD5"),
+            "sha1" => self.crack_hash(hashes, effective_wordlist, SHA1_KERNEL_SOURCE, "sha1_crack", 40, 20, "SHA1"),
+            "sha256" => self.crack_hash(hashes, effective_wordlist, SHA256_KERNEL_SOURCE, "sha256_crack", 64, 32, "SHA256"),
+            "sha512" => self.crack_hash(hashes, effective_wordlist, SHA512_KERNEL_SOURCE, "sha512_crack", 128, 64, "SHA512"),
+            "sha3-256" => self.crack_hash(hashes, effective_wordlist, SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 64, 32, "SHA3-256"),
+            "sha3-512" => self.crack_hash(hashes, effective_wordlist, SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 128, 64, "SHA3-512"),
+            "ntlm" => self.crack_hash(hashes, effective_wordlist, NTLM_KERNEL_SOURCE, "ntlm_crack", 32, 16, "NTLM"),
+            "sha256/sha3-256" => {
+                println!(" {} Dual-mode: trying SHA256 on GPU...", "[*]".green());
+                let found_sha256 = self.crack_hash(hashes, effective_wordlist, SHA256_KERNEL_SOURCE, "sha256_crack", 64, 32, "SHA256");
+                println!(" {} Dual-mode: trying SHA3-256 on GPU...", "[*]".green());
+                let found_sha3 = self.crack_hash(hashes, effective_wordlist, SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 64, 32, "SHA3-256");
+                found_sha256 + found_sha3
+            }
+            "sha512/sha3-512" => {
+                println!(" {} Dual-mode: trying SHA512 on GPU...", "[*]".green());
+                let found_sha512 = self.crack_hash(hashes, effective_wordlist, SHA512_KERNEL_SOURCE, "sha512_crack", 128, 64, "SHA512");
+                println!(" {} Dual-mode: trying SHA3-512 on GPU...", "[*]".green());
+                let found_sha3 = self.crack_hash(hashes, effective_wordlist, SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 128, 64, "SHA3-512");
+                found_sha512 + found_sha3
+            }
             _ => CpuBackend.run(hashes, wordlist, hash_type, rule),
         }
     }

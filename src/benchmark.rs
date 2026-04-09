@@ -4,7 +4,7 @@ use std::time::{Duration, Instant};
 const DEFAULT_ITERATIONS: usize = 5_000_000;
 const WARMUP_ITERATIONS: usize = 50_000;
 
-pub fn run() {
+pub fn run(_gpu: bool) {
     println!("\n[+] Benchmark mode enabled");
     println!("[*] Warming up CPU...\n");
 
@@ -20,6 +20,12 @@ pub fn run() {
 
     println!("\n========== MULTI THREAD (RAYON) ==========");
     run_parallel_suite(input, DEFAULT_ITERATIONS);
+
+    #[cfg(feature = "gpu")]
+    if _gpu {
+        println!("\n========== GPU (OpenCL) ==========");
+        run_gpu_suite(DEFAULT_ITERATIONS);
+    }
 
     println!("\n[+] Benchmark complete\n");
 }
@@ -109,4 +115,37 @@ fn print_result(name: &str, iterations: usize, duration: Duration) {
     let hps = iterations as f64 / seconds;
 
     println!("{:<8} | {:>15.2} H/s | {:>10.4} sec", name, hps, seconds);
+}
+
+#[cfg(feature = "gpu")]
+fn run_gpu_suite(iterations: usize) {
+    use crate::gpu_backend::GpuBackend;
+
+    let gpu = match GpuBackend::new() {
+        Ok(g) => g,
+        Err(e) => {
+            println!("[!] GPU benchmark skipped: {}", e);
+            return;
+        }
+    };
+    gpu.print_device_info();
+
+    let algos = [
+        "md5", "sha1", "sha256", "sha512", "sha3-256", "sha3-512", "ntlm",
+    ];
+    let names = [
+        "MD5", "SHA1", "SHA256", "SHA512", "SHA3-256", "SHA3-512", "NTLM",
+    ];
+
+    // Warmup: run a small batch to trigger kernel compilation
+    for algo in &algos {
+        let _ = gpu.benchmark_algorithm(algo, 10_000);
+    }
+
+    for (algo, name) in algos.iter().zip(names.iter()) {
+        match gpu.benchmark_algorithm(algo, iterations) {
+            Some(duration) => print_result(name, iterations, duration),
+            None => println!("{:<8} | FAILED", name),
+        }
+    }
 }
