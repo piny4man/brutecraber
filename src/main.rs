@@ -3,6 +3,8 @@ mod benchmark;
 mod cpu_backend;
 mod cracker;
 mod detector;
+#[cfg(feature = "gpu")]
+mod gpu_backend;
 mod hashes;
 mod rules;
 
@@ -41,6 +43,10 @@ struct Args {
 
     #[arg(long = "benchmark", default_value_t = false)]
     benchmark: bool,
+
+    #[cfg(feature = "gpu")]
+    #[arg(long = "gpu", default_value_t = false, help = "Use GPU acceleration (OpenCL)")]
+    gpu: bool,
 }
 
 fn banner() {
@@ -140,6 +146,35 @@ fn main() -> anyhow::Result<()> {
         );
     } else {
         println!("{} Selected hash: {}\n", star, auto_detect.green());
+    }
+
+    #[cfg(feature = "gpu")]
+    if args.gpu {
+        use crate::gpu_backend::GpuBackend;
+
+        let gpu = match GpuBackend::new() {
+            Ok(g) => g,
+            Err(e) => {
+                eprintln!(" {} {}", "[!]".red(), e);
+                return Err(anyhow::anyhow!(e));
+            }
+        };
+        gpu.print_device_info();
+
+        let found = gpu.run(&hashes, &wordlist, &auto_detect, args.rules);
+
+        println!();
+        if found == 0 {
+            println!("{} failed cracking hashes or bad file\n", star.red());
+        } else {
+            println!(
+                "{} cracked {}/{} hashes",
+                star.green(),
+                found,
+                hashes.len()
+            );
+        }
+        return Ok(());
     }
 
     let backend = CpuBackend;
