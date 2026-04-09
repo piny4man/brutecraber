@@ -13,8 +13,15 @@ use std::ptr;
 use std::time::Instant;
 
 const MD5_KERNEL_SOURCE: &str = include_str!("kernels/md5.cl");
+const SHA1_KERNEL_SOURCE: &str = include_str!("kernels/sha1.cl");
+const SHA256_KERNEL_SOURCE: &str = include_str!("kernels/sha256.cl");
+const SHA512_KERNEL_SOURCE: &str = include_str!("kernels/sha512.cl");
+const SHA3_256_KERNEL_SOURCE: &str = include_str!("kernels/sha3_256.cl");
+const SHA3_512_KERNEL_SOURCE: &str = include_str!("kernels/sha3_512.cl");
+const NTLM_KERNEL_SOURCE: &str = include_str!("kernels/ntlm.cl");
 
-const GPU_SUPPORTED_HEX_TYPES: &[&str] = &["md5"];
+const GPU_SUPPORTED_HEX_TYPES: &[&str] =
+    &["md5", "sha1", "sha256", "sha512", "sha3-256", "sha3-512", "ntlm"];
 
 pub struct GpuBackend {
     device: Device,
@@ -80,28 +87,37 @@ impl GpuBackend {
         self.device.global_mem_size().unwrap_or(256 * 1024 * 1024)
     }
 
-    fn crack_md5(&self, hashes: &[&str], wordlist: &str) -> usize {
-        let star = "[*]";
-
+    /// Generic hash cracking method that works for any algorithm.
+    /// All GPU-supported algorithms share the same kernel interface.
+    fn crack_hash(
+        &self,
+        hashes: &[&str],
+        wordlist: &str,
+        kernel_source: &str,
+        kernel_fn_name: &str,
+        hex_len: usize,
+        digest_size: usize,
+        algo_name: &str,
+    ) -> usize {
         // Parse target hashes from hex to bytes
-        let target_bytes: Vec<[u8; 16]> = hashes
+        let target_bytes: Vec<Vec<u8>> = hashes
             .iter()
             .filter_map(|h| {
-                if h.len() != 32 {
+                if h.len() != hex_len {
                     return None;
                 }
-                let mut bytes = [0u8; 16];
+                let mut bytes = vec![0u8; digest_size];
                 faster_hex::hex_decode(h.as_bytes(), &mut bytes).ok()?;
                 Some(bytes)
             })
             .collect();
 
         if target_bytes.is_empty() {
-            println!("{} No valid MD5 hex hashes found", "[!]".red());
+            println!("{} No valid {} hex hashes found", "[!]".red(), algo_name);
             return 0;
         }
 
-        // Flatten targets for GPU upload (contiguous 16-byte blocks)
+        // Flatten targets for GPU upload (contiguous digest_size-byte blocks)
         let target_flat: Vec<u8> = target_bytes
             .iter()
             .flat_map(|h| h.iter().copied())
@@ -111,17 +127,21 @@ impl GpuBackend {
         // Build OpenCL program + kernel
         let program = match Program::create_and_build_from_source(
             &self.context,
-            MD5_KERNEL_SOURCE,
+            kernel_source,
             "",
         ) {
             Ok(p) => p,
             Err(e) => {
-                println!("{} Failed to build MD5 OpenCL kernel: {e}", "[!]".red());
+                println!(
+                    "{} Failed to build {} OpenCL kernel: {e}",
+                    "[!]".red(),
+                    algo_name
+                );
                 return 0;
             }
         };
 
-        let kernel = match Kernel::create(&program, "md5_crack") {
+        let kernel = match Kernel::create(&program, kernel_fn_name) {
             Ok(k) => k,
             Err(e) => {
                 println!("{} Failed to create kernel: {e}", "[!]".red());
@@ -179,7 +199,7 @@ impl GpuBackend {
                 words_data.push(0);
             }
 
-            match self.execute_md5_batch(
+            match self.execute_hash_batch(
                 &kernel,
                 &words_data,
                 &offsets,
@@ -199,7 +219,7 @@ impl GpuBackend {
                                     .collect();
                                 bar.println(format!(
                                     "{} hash cracked {} -> {}",
-                                    star.green(),
+                                    "[*]".green(),
                                     hex,
                                     batch[i]
                                 ));
@@ -233,7 +253,8 @@ impl GpuBackend {
         found
     }
 
-    fn execute_md5_batch(
+    /// Generic GPU batch execution — kernel interface is the same for all algorithms.
+    fn execute_hash_batch(
         &self,
         kernel: &Kernel,
         words_data: &[u8],
@@ -307,25 +328,79 @@ impl GpuBackend {
 
 impl CrackingBackend for GpuBackend {
     fn run(&self, hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usize {
-        if !GPU_SUPPORTED_HEX_TYPES.contains(&hash_type) {
+        // Memory-hard algorithms: not suited for GPU
+        if hash_type == "bcrypt" {
             println!(
-                " {} GPU acceleration not yet supported for '{}', falling back to CPU",
+                " {} bcrypt is a memory-hard algorithm not suited for GPU acceleration. Falling back to CPU.",
+                "[!]".yellow()
+            );
+            return CpuBackend.run(hashes, wordlist, hash_type, rule);
+        }
+
+        if hash_type == "argon2" {
+            println!(
+                " {} argon2 is a memory-hard algorithm not suited for GPU acceleration. Falling back to CPU.",
+                "[!]".yellow()
+            );
+            return CpuBackend.run(hashes, wordlist, hash_type, rule);
+        }
+
+        // Base64 encoded types: GPU supports hex only
+        if hash_type.ends_with("-base64") {
+            println!(
+                " {} GPU acceleration currently supports hex encoding only. '{}' uses base64. Falling back to CPU.",
                 "[!]".yellow(),
                 hash_type
             );
             return CpuBackend.run(hashes, wordlist, hash_type, rule);
         }
 
+        // Salted types: not yet supported on GPU
+        if hash_type.ends_with("-salt") {
+            println!(
+                " {} GPU acceleration does not yet support salted hashes. Falling back to CPU.",
+                "[!]".yellow()
+            );
+            return CpuBackend.run(hashes, wordlist, hash_type, rule);
+        }
+
+        // Dual-mode / hybrid types
+        if hash_type.contains('/') {
+            println!(
+                " {} GPU acceleration does not yet support dual-mode types ('{}'). Falling back to CPU.",
+                "[!]".yellow(),
+                hash_type
+            );
+            return CpuBackend.run(hashes, wordlist, hash_type, rule);
+        }
+
+        // Unsupported hex type
+        if !GPU_SUPPORTED_HEX_TYPES.contains(&hash_type) {
+            println!(
+                " {} GPU acceleration not supported for '{}'. Falling back to CPU.",
+                "[!]".yellow(),
+                hash_type
+            );
+            return CpuBackend.run(hashes, wordlist, hash_type, rule);
+        }
+
+        // Rules: applied on CPU, GPU dispatch handled in Phase 4
         if rule {
             println!(
-                " {} Rules with GPU not yet supported, falling back to CPU",
+                " {} Rules with GPU not yet supported. Falling back to CPU.",
                 "[!]".yellow()
             );
             return CpuBackend.run(hashes, wordlist, hash_type, rule);
         }
 
         match hash_type {
-            "md5" => self.crack_md5(hashes, wordlist),
+            "md5" => self.crack_hash(hashes, wordlist, MD5_KERNEL_SOURCE, "md5_crack", 32, 16, "MD5"),
+            "sha1" => self.crack_hash(hashes, wordlist, SHA1_KERNEL_SOURCE, "sha1_crack", 40, 20, "SHA1"),
+            "sha256" => self.crack_hash(hashes, wordlist, SHA256_KERNEL_SOURCE, "sha256_crack", 64, 32, "SHA256"),
+            "sha512" => self.crack_hash(hashes, wordlist, SHA512_KERNEL_SOURCE, "sha512_crack", 128, 64, "SHA512"),
+            "sha3-256" => self.crack_hash(hashes, wordlist, SHA3_256_KERNEL_SOURCE, "sha3_256_crack", 64, 32, "SHA3-256"),
+            "sha3-512" => self.crack_hash(hashes, wordlist, SHA3_512_KERNEL_SOURCE, "sha3_512_crack", 128, 64, "SHA3-512"),
+            "ntlm" => self.crack_hash(hashes, wordlist, NTLM_KERNEL_SOURCE, "ntlm_crack", 32, 16, "NTLM"),
             _ => CpuBackend.run(hashes, wordlist, hash_type, rule),
         }
     }
