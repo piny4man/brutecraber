@@ -1,6 +1,6 @@
 use pbkdf2::{
-    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
     Pbkdf2,
+    password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString},
 };
 
 pub fn verify(word: &str, hash: &str) -> bool {
@@ -16,8 +16,8 @@ pub fn verify(word: &str, hash: &str) -> bool {
 mod tests {
     use super::*;
     use pbkdf2::{
-        password_hash::{PasswordHasher, SaltString},
         Pbkdf2,
+        password_hash::{PasswordHasher, SaltString},
     };
 
     // Helper para generar hashes con salt base64
