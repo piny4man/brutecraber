@@ -1,0 +1,4 @@
+# PBKDF2 test hashes (password,salt,base64)
+password,c29tZXNhbHQ
+admin,YW5vdGhlcnNhbHQ
+123456,dGhpcmRzYWx0YWI
