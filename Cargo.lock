@@ -154,6 +154,7 @@ dependencies = [
  "md4",
  "num_cpus",
  "opencl3",
+ "pbkdf2",
  "rayon",
  "scrypt",
  "sha1",
