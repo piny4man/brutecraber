@@ -592,7 +592,7 @@ pub fn run(hashes: &[&str], wordlist: &str, hash_type: &str, rule: bool) -> usiz
     if hash_type == "pbkdf2" {
         parallel_crack(wordlist, rule, &bar, |w| {
             for h in hashes {
-                if hashes::pbkdf2::verify(w, &h) {
+                if hashes::pbkdf2::verify(w, h) {
                     bar.println(format!("{} hash cracked {} -> {}", star.green(), h, w));
                     found.fetch_add(1, Ordering::Relaxed);
                 }
